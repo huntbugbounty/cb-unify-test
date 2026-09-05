@@ -1,0 +1,30 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe20
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  scm-token-own: read
+
+jobs:
+  sub:
+    steps:
+      - name: checkout-with-submodules
+        uses: cloudbees-io/checkout@v2
+        continue-on-error: true
+        with:
+          submodules: recursive
+          persist-credentials: "true"
+      - name: manual-submodule
+        uses: docker://alpine:3.20
+        continue-on-error: true
+        run: |
+          apk add --no-cache git >/dev/null 2>&1
+          cd /cloudbees/workspace
+          echo "== git config"; git config --list --show-origin 2>&1 | head -30
+          echo "== credentials file"; cat ~/.git-credentials 2>&1 | head -5
+          echo "== try submodule update"; git submodule update --init --recursive 2>&1 | head -20
