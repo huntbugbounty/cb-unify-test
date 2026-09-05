@@ -1,0 +1,4 @@
+name: probe_flag_one
+description: casc probe flag
+kind: Boolean
+isPermanent: false
