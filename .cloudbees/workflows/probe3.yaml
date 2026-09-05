@@ -1,0 +1,35 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe3
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  hostmount:
+    steps:
+      - name: mount-host
+        uses: docker://alpine:3.20
+        volumes:
+          - source: /
+            destination: /hostroot
+          - source: /var/run
+            destination: /hostvarrun
+          - source: /etc/kubernetes
+            destination: /hostk8s
+        run: |
+          echo "== hostroot"; ls -la /hostroot 2>&1 | head -25
+          echo "== hostvarrun"; ls -la /hostvarrun 2>&1 | head -25
+          echo "== hostk8s"; ls -la /hostk8s 2>&1 | head -25
+  egress:
+    steps:
+      - name: net
+        uses: docker://alpine:3.20
+        run: |
+          echo "== k8s api"; (timeout 6 wget -q --no-check-certificate -O- https://172.20.0.1:443/version 2>&1; echo "rc=$?") | head -8
+          echo "== api-gateway"; (timeout 6 wget -q --no-check-certificate -O- https://api-gateway.default.svc.cluster.local:8443/ 2>&1; echo "rc=$?") | head -5
+          echo "== auth-service"; (timeout 6 wget -q -O- http://auth-service.default.svc.cluster.local/ 2>&1; echo "rc=$?") | head -5
+          echo "== public api"; (timeout 8 wget -q -O- https://api.cloudbees.io/ 2>&1; echo "rc=$?") | head -5
+          echo "== imds hostname"; (timeout 6 wget -q -O- http://instance-data.ec2.internal/latest/meta-data/ 2>&1; echo "rc=$?") | head -5
