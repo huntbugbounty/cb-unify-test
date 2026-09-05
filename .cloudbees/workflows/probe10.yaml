@@ -1,0 +1,22 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe10
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  evid:
+    steps:
+      - name: publish-evidence
+        uses: cloudbees-io/publish-evidence-item@v1
+        with:
+          content: |
+            ## probe evidence
+            XSSMARKER1 <img src=x onerror="document.title='XSS_PROBE_FIRED'">
+            XSSMARKER2 <script>document.title='XSS_PROBE_SCRIPT'</script>
+            XSSMARKER3 [click](javascript:document.title='XSS_PROBE_LINK')
+            XSSMARKER4 <a href="javascript:document.title='XSS_PROBE_A'">a</a>
+            XSSMARKER5 <iframe srcdoc="<script>parent.document.title='XSS_PROBE_IFRAME'</script>"></iframe>
