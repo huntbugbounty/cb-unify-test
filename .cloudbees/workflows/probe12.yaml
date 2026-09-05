@@ -1,0 +1,28 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe12
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  net:
+    steps:
+      - name: internal-reach
+        uses: docker://alpine:3.20
+        run: |
+          echo "== resolv"; cat /etc/resolv.conf
+          for ns in default platform cloudbees unify prod core services app; do
+            for svc in auth-service api-gateway endpoint-service; do
+              h="$svc.$ns.svc.cluster.local"
+              r=$(nslookup "$h" 2>&1 | grep -A2 "Name:" | head -3)
+              if [ -n "$r" ]; then echo "RESOLVED $h => $r"; fi
+            done
+          done
+          echo "== k8s api anon endpoints"
+          for p in /version /healthz /api /apis "/api/v1/namespaces"; do
+            printf "%s => " "$p"; (timeout 6 wget -q --no-check-certificate -O- "https://172.20.0.1:443$p" 2>&1 || echo "err") | head -c 200; echo
+          done
+          echo "== node ip guess"; ip route 2>/dev/null | head -5; cat /etc/hosts
