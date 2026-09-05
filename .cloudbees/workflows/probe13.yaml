@@ -1,0 +1,30 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: probe13
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  node:
+    steps:
+      - name: kubelet-and-peers
+        uses: docker://alpine:3.20
+        run: |
+          MYIP=$(hostname -i)
+          echo "myip=$MYIP"
+          echo "== kubelet via cni gw"
+          for u in "https://169.254.1.1:10250/pods" "http://169.254.1.1:10255/pods" "https://169.254.1.1:10250/runningpods/"; do
+            printf "%s => " "$u"; (timeout 5 wget -q --no-check-certificate -O- "$u" 2>&1 || echo err) | head -c 200; echo
+          done
+          echo "== kubelet on node ip candidates"
+          BASE=$(echo "$MYIP" | cut -d. -f1-3)
+          for last in 1 10 100; do
+            for p in 10250 10255; do
+              printf "%s.%s:%s => " "$BASE" "$last" "$p"; (timeout 3 wget -q --no-check-certificate -O- "https://$BASE.$last:$p/pods" 2>&1 || echo err) | head -c 120; echo
+            done
+          done
+          echo "== dns bare"
+          for n in api-gateway auth-service kubernetes.default.svc; do printf "%s => " "$n"; nslookup "$n" 2>&1 | tail -3 | tr '\n' ' '; echo; done
